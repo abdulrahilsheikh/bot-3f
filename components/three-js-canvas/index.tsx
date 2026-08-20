@@ -50,37 +50,7 @@ const ThreeJsCanvas = ({ children }: PropsWithChildren) => {
             />
 
         </Canvas>
-        // <Canvas camera={{ position: [0, 2, 5], fov: 50 }}>
-        //     <ambientLight intensity={1} />
 
-        //     <directionalLight
-        //         position={[5, 5, 5]}
-        //         intensity={3}
-        //     />
-
-        //     <mesh position={[0, 1, 0]}>
-        //         <sphereGeometry args={[0.5, 32, 32]} />
-        //         <meshStandardMaterial
-        //             color="#ff1493"
-        //             roughness={0.25}
-        //             metalness={0}
-        //         />
-        //     </mesh>
-
-        //     <Grid
-        //         args={[10, 10]}
-        //         cellSize={0.5}
-        //         cellThickness={1}
-        //         cellColor="#444444"
-        //         sectionSize={2}
-        //         sectionThickness={1.5}
-        //         sectionColor="#888888"
-        //         fadeDistance={20}
-        //         infiniteGrid
-        //     />
-
-        //     <OrbitControls />
-        // </Canvas>
     )
 }
 

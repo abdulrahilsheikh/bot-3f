@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Props = {
   segments: SegmentFormData[];
@@ -38,7 +39,9 @@ export default function IkCalculator({ segments }: Props) {
   const [jointValues, setJointValues] = useState<number[]>(() =>
     segments.map((segment) => segment.value),
   );
-
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
   /*
    * Target input fields.
    */
@@ -100,25 +103,14 @@ export default function IkCalculator({ segments }: Props) {
     const result = ik(currentSegments, targetVector, {
       maxIterations: 500,
       tolerance: 0.001,
+      linearStep: 0.5,
+      angleStep: THREE.MathUtils.degToRad(10),
     });
 
     if (!result.success) {
       console.warn("IK failed. Error:", result.error, result.joints);
-
       return;
     }
-
-    /*
-     * Verify IK result using FK.
-     */
-    const testSegments = segments.map((segment, index) => ({
-      ...segment,
-      value: result.joints[index],
-    }));
-
-    const pose = fk(testSegments, result.joints);
-
-    console.log("FK of IK solution:", pose.position);
 
     /*
      * Animate toward IK solution.
@@ -141,14 +133,26 @@ export default function IkCalculator({ segments }: Props) {
         <div className="flex h-full flex-col overflow-y-auto p-4 scrollbar-dark">
           {/* HEADER */}
 
-          <div className="mb-6">
+          <div className="mb-2">
             <h2 className="text-lg font-semibold">IK Calculator</h2>
 
             <p className="text-sm text-muted-foreground">
               Configure the target and solve the robot pose.
             </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={"mt-2"}
+              onClick={() =>
+                router.push(
+                  `/bot-setup?config=${searchParams.get("config") ?? ""}`,
+                )
+              }
+            >
+              Edit Bot
+            </Button>
           </div>
-
           {/* ================================================= */}
           {/* TARGET CARD                                       */}
           {/* ================================================= */}
@@ -264,6 +268,31 @@ export default function IkCalculator({ segments }: Props) {
           >
             Compute IK
           </Button>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Simulation Speed</Label>
+
+              <span className="font-mono text-xs text-muted-foreground">
+                {simulationSpeed.toFixed(1)}x
+              </span>
+            </div>
+
+            <input
+              type="range"
+              min={0.1}
+              max={5}
+              step={0.1}
+              value={simulationSpeed}
+              onChange={(e) => setSimulationSpeed(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0.1x</span>
+              <span>1x</span>
+              <span>5x</span>
+            </div>
+          </div>
 
           <Separator className="my-6" />
 
@@ -386,6 +415,7 @@ export default function IkCalculator({ segments }: Props) {
             setTarget={setTarget}
             setJointValues={setJointValues}
             animationTarget={animationTarget}
+            simulationSpeed={simulationSpeed}
           />
 
           <BotMesh segments={animatedSegments} />
@@ -407,18 +437,21 @@ type ControllerProps = {
   setJointValues: Dispatch<SetStateAction<number[]>>;
 
   animationTarget: RefObject<number[] | null>;
+  simulationSpeed?: number;
 };
-
 function IKController({
   target,
-  setTarget,
   setJointValues,
   animationTarget,
+  simulationSpeed = 1,
 }: ControllerProps) {
   useFrame((_, delta) => {
     const targetValues = animationTarget.current;
 
     if (!targetValues) return;
+
+    // Scale animation time.
+    const scaledDelta = delta * simulationSpeed;
 
     setJointValues((current) => {
       let finished = true;
@@ -430,7 +463,12 @@ function IKController({
           return value;
         }
 
-        const nextValue = THREE.MathUtils.damp(value, targetValue, 6, delta);
+        const nextValue = THREE.MathUtils.damp(
+          value,
+          targetValue,
+          6,
+          scaledDelta,
+        );
 
         if (Math.abs(nextValue - targetValue) > 0.0005) {
           finished = false;

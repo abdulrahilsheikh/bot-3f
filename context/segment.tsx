@@ -143,6 +143,11 @@ export function SegmentProvider({
   /* ------------------------------ */
 
   function deleteSegment(nodeId: string) {
+    // Never delete root
+    if (nodeId === "root") {
+      return;
+    }
+
     setNodes((current) => current.filter((node) => node.id !== nodeId));
 
     setEdges((current) =>
@@ -152,10 +157,23 @@ export function SegmentProvider({
     );
   }
 
-  function onNodesChange(changes: NodeChange<SegmentNodeType>[]) {
-    setNodes((current) => applyNodeChanges(changes, current));
-  }
+  /* ------------------------------ */
+  /* Node changes */
+  /* ------------------------------ */
 
+  function onNodesChange(changes: NodeChange<SegmentNodeType>[]) {
+    /*
+     * Remove delete changes for the root node.
+     *
+     * React Flow can generate a "remove" change
+     * independently of deleteSegment().
+     */
+    const filteredChanges = changes.filter(
+      (change) => change.type !== "remove" || change.id !== "root",
+    );
+
+    setNodes((current) => applyNodeChanges(filteredChanges, current));
+  }
   function onEdgesChange(changes: EdgeChange[]) {
     setEdges((current) => applyEdgeChanges(changes, current));
   }

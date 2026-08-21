@@ -137,3 +137,27 @@
     cursor: pointer;
   }
 }
+@layer utilities {
+  .scrollbar-dark {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 9999px;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+}

@@ -13,9 +13,17 @@ import * as THREE from "three";
 
 import { SegmentFormData } from "@/interfaces/segment";
 import { ik } from "@/utils/ik";
+import { fk } from "@/utils/fk";
+
 import { BotMesh } from "../bot-generator";
 import ThreeJsCanvas from "../three-js-canvas";
-import { fk } from "@/utils/fk";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 type Props = {
   segments: SegmentFormData[];
@@ -25,11 +33,15 @@ export default function IkCalculator({ segments }: Props) {
   /*
    * Current runtime joint values.
    *
-   * These are what actually control the robot.
+   * Stored internally in RADIANS for revolute joints.
    */
   const [jointValues, setJointValues] = useState<number[]>(() =>
     segments.map((segment) => segment.value),
   );
+
+  /*
+   * Target input fields.
+   */
   const [targetInput, setTargetInput] = useState({
     x: 2,
     y: 0,
@@ -37,26 +49,18 @@ export default function IkCalculator({ segments }: Props) {
   });
 
   /*
-   * IK target position.
+   * Actual IK target.
    */
   const [target, setTarget] = useState<[number, number, number] | null>(null);
 
   /*
-   * Target joint configuration returned by IK.
-   *
-   * Example:
-   *
-   * [
-   *   0.2,
-   *   1.1,
-   *   -0.4
-   * ]
+   * IK solution that the animation should move toward.
    */
   const animationTarget = useRef<number[] | null>(null);
 
   /*
-   * If the robot definition changes,
-   * reset runtime joint values.
+   * Reset runtime joint values whenever
+   * the robot definition changes.
    */
   useEffect(() => {
     setJointValues(segments.map((segment) => segment.value));
@@ -65,14 +69,12 @@ export default function IkCalculator({ segments }: Props) {
   }, [segments]);
 
   /*
-   * Combine the static robot definition
-   * with the current runtime joint state.
+   * Robot definition + current runtime values.
    */
   const animatedSegments = segments.map((segment, index) => ({
     ...segment,
     value: jointValues[index] ?? segment.value,
   }));
-  console.log(animatedSegments);
 
   /*
    * ================================
@@ -82,14 +84,10 @@ export default function IkCalculator({ segments }: Props) {
   const calculateIK = () => {
     if (!target) return;
 
-    /*
-     * IK expects THREE.Vector3.
-     */
     const targetVector = new THREE.Vector3(target[0], target[1], target[2]);
 
     /*
-     * Give IK the robot in its CURRENT
-     * configuration.
+     * Current robot configuration.
      */
     const currentSegments = segments.map((segment, index) => ({
       ...segment,
@@ -97,7 +95,7 @@ export default function IkCalculator({ segments }: Props) {
     }));
 
     /*
-     * Solve.
+     * Solve IK.
      */
     const result = ik(currentSegments, targetVector, {
       maxIterations: 500,
@@ -111,14 +109,8 @@ export default function IkCalculator({ segments }: Props) {
     }
 
     /*
-     * DON'T immediately setJointValues().
-     *
-     * Store the solution.
-     *
-     * IKController will animate
-     * the robot toward this solution.
+     * Verify IK result using FK.
      */
-
     const testSegments = segments.map((segment, index) => ({
       ...segment,
       value: result.joints[index],
@@ -128,156 +120,266 @@ export default function IkCalculator({ segments }: Props) {
 
     console.log("FK of IK solution:", pose.position);
 
+    /*
+     * Animate toward IK solution.
+     */
     animationTarget.current = result.joints;
   };
 
+  /*
+   * ================================
+   * RENDER
+   * ================================
+   */
   return (
-    <div className="h-screen flex">
-      {/* ========================= */}
-      {/* CONTROLS */}
-      {/* ========================= */}
+    <div className="flex h-screen">
+      {/* ================================================= */}
+      {/* SIDEBAR                                           */}
+      {/* ================================================= */}
 
-      <div className="w-80 bg-white border-r p-5">
-        <h2 className="text-lg font-semibold mb-5">IK Calculator</h2>
+      <aside className="w-80 shrink-0 border-r bg-background">
+        <div className="flex h-full flex-col overflow-y-auto p-4 scrollbar-dark">
+          {/* HEADER */}
 
-        <div className="space-y-3">
-          {/* ========================= */}
-          {/* PLACE MARKER */}
-          {/* ========================= */}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold">IK Calculator</h2>
 
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div>
-              <label className="text-xs text-gray-500">X</label>
-              <input
-                type="number"
-                step="0.01"
-                value={targetInput.x}
-                onChange={(e) =>
-                  setTargetInput((v) => ({
-                    ...v,
-                    x: Number(e.target.value),
-                  }))
-                }
-                className="w-full rounded-md border px-2 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-500">Y</label>
-              <input
-                type="number"
-                step="0.01"
-                value={targetInput.y}
-                onChange={(e) =>
-                  setTargetInput((v) => ({
-                    ...v,
-                    y: Number(e.target.value),
-                  }))
-                }
-                className="w-full rounded-md border px-2 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-500">Z</label>
-              <input
-                type="number"
-                step="0.01"
-                value={targetInput.z}
-                onChange={(e) =>
-                  setTargetInput((v) => ({
-                    ...v,
-                    z: Number(e.target.value),
-                  }))
-                }
-                className="w-full rounded-md border px-2 py-2 text-sm"
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Configure the target and solve the robot pose.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              setTarget([targetInput.x, targetInput.y, targetInput.z])
-            }
-            className="w-full rounded-lg bg-black px-4 py-3 text-sm font-medium text-white hover:bg-gray-800"
-          >
-            Place Marker
-          </button>
+          {/* ================================================= */}
+          {/* TARGET CARD                                       */}
+          {/* ================================================= */}
 
-          {/* ========================= */}
-          {/* COMPUTE IK */}
-          {/* ========================= */}
+          <Card className="h-auto shrink-0">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Target Position</CardTitle>
 
-          <button
+                {target && <Badge variant="secondary">Active</Badge>}
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {/* X Y Z */}
+
+              <div className="grid grid-cols-3 h-max gap-2">
+                {/* X */}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="target-x">X</Label>
+
+                  <Input
+                    id="target-x"
+                    type="number"
+                    step="0.01"
+                    value={targetInput.x}
+                    onChange={(e) =>
+                      setTargetInput((current) => ({
+                        ...current,
+                        x: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* Y */}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="target-y">Y</Label>
+
+                  <Input
+                    id="target-y"
+                    type="number"
+                    step="0.01"
+                    value={targetInput.y}
+                    onChange={(e) =>
+                      setTargetInput((current) => ({
+                        ...current,
+                        y: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* Z */}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="target-z">Z</Label>
+
+                  <Input
+                    id="target-z"
+                    type="number"
+                    step="0.01"
+                    value={targetInput.z}
+                    onChange={(e) =>
+                      setTargetInput((current) => ({
+                        ...current,
+                        z: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* PLACE MARKER */}
+
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() =>
+                  setTarget([targetInput.x, targetInput.y, targetInput.z])
+                }
+              >
+                Place Marker
+              </Button>
+
+              {/* TARGET DISPLAY */}
+
+              {target && (
+                <div className="rounded-md bg-muted p-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Target</p>
+
+                  <p className="font-mono text-sm">
+                    ({target[0].toFixed(3)}, {target[1].toFixed(3)},{" "}
+                    {target[2].toFixed(3)})
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ================================================= */}
+          {/* IK BUTTON                                         */}
+          {/* ================================================= */}
+
+          <Button
             type="button"
+            className="mt-4 w-full"
+            variant="default"
             disabled={!target}
             onClick={calculateIK}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Compute IK
-          </button>
-        </div>
+          </Button>
 
-        {/* ========================= */}
-        {/* JOINT VALUES */}
-        {/* ========================= */}
+          <Separator className="my-6" />
 
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold mb-3">Joint Values</h3>
+          {/* ================================================= */}
+          {/* JOINT VALUES                                     */}
+          {/* ================================================= */}
 
-          <div className="space-y-3">
-            {jointValues.map((value, index) => {
-              const joint = segments[index]?.joint;
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold">Joint Values</h3>
 
-              if (!joint) return null;
+                <p className="text-xs text-muted-foreground">
+                  Manually adjust the FK pose.
+                </p>
+              </div>
 
-              const degrees = THREE.MathUtils.radToDeg(value);
-              const minDegrees = THREE.MathUtils.radToDeg(joint.min);
-              const maxDegrees = THREE.MathUtils.radToDeg(joint.max);
+              <Badge variant="outline">{jointValues.length} joints</Badge>
+            </div>
 
-              return (
-                <div key={index} className="flex items-center gap-3">
-                  <span className="w-10 text-sm font-medium">J{index + 1}</span>
+            <div className="space-y-3">
+              {jointValues.map((value, index) => {
+                const joint = segments[index]?.joint;
 
-                  <input
-                    type="number"
-                    value={Number(degrees.toFixed(2))}
-                    min={minDegrees}
-                    max={maxDegrees}
-                    step={1}
-                    onChange={(e) => {
-                      const degreesValue = Number(e.target.value);
-                      const radians = THREE.MathUtils.degToRad(degreesValue);
+                if (!joint) return null;
 
-                      setJointValues((current) => {
-                        const next = [...current];
+                /*
+                 * Revolute values are stored in radians.
+                 *
+                 * UI displays degrees.
+                 */
+                const isRevolute = joint.type === "revolute";
 
-                        next[index] = THREE.MathUtils.clamp(
-                          radians,
-                          joint.min,
-                          joint.max,
-                        );
+                const displayValue = isRevolute
+                  ? THREE.MathUtils.radToDeg(value)
+                  : value;
 
-                        return next;
-                      });
-                    }}
-                    className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right font-mono text-sm"
-                  />
+                const minValue = isRevolute
+                  ? THREE.MathUtils.radToDeg(joint.min)
+                  : joint.min;
 
-                  <span className="text-xs text-gray-500">°</span>
-                </div>
-              );
-            })}
+                const maxValue = isRevolute
+                  ? THREE.MathUtils.radToDeg(joint.max)
+                  : joint.max;
+
+                return (
+                  <div key={index} className="rounded-lg border bg-card p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <Label
+                        htmlFor={`joint-${index}`}
+                        className="text-sm font-medium"
+                      >
+                        {joint.name || `J${index + 1}`}
+                      </Label>
+
+                      <Badge variant="secondary">J{index + 1}</Badge>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`joint-${index}`}
+                        type="number"
+                        value={Number(displayValue.toFixed(2))}
+                        min={minValue}
+                        max={maxValue}
+                        step={1}
+                        onChange={(e) => {
+                          const inputValue = Number(e.target.value);
+
+                          const internalValue = isRevolute
+                            ? THREE.MathUtils.degToRad(inputValue)
+                            : inputValue;
+
+                          setJointValues((current) => {
+                            const next = [...current];
+
+                            next[index] = THREE.MathUtils.clamp(
+                              internalValue,
+                              joint.min,
+                              joint.max,
+                            );
+
+                            return next;
+                          });
+
+                          /*
+                           * If user manually changes a joint,
+                           * cancel any running IK animation.
+                           */
+                          animationTarget.current = null;
+                        }}
+                      />
+
+                      <span className="w-8 text-sm text-muted-foreground">
+                        {isRevolute ? "°" : "m"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+                      <span>Min: {minValue.toFixed(1)}</span>
+
+                      <span>Max: {maxValue.toFixed(1)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* ========================= */}
-      {/* THREE.JS */}
-      {/* ========================= */}
+      {/* ================================================= */}
+      {/* THREE JS                                          */}
+      {/* ================================================= */}
 
-      <div className="flex-1">
+      <main className="min-w-0 flex-1">
         <ThreeJsCanvas>
           <IKController
             target={target}
@@ -288,7 +390,7 @@ export default function IkCalculator({ segments }: Props) {
 
           <BotMesh segments={animatedSegments} />
         </ThreeJsCanvas>
-      </div>
+      </main>
     </div>
   );
 }
@@ -314,15 +416,15 @@ function IKController({
   animationTarget,
 }: ControllerProps) {
   useFrame((_, delta) => {
-    const target = animationTarget.current;
+    const targetValues = animationTarget.current;
 
-    if (!target) return;
+    if (!targetValues) return;
 
     setJointValues((current) => {
       let finished = true;
 
       const next = current.map((value, index) => {
-        const targetValue = target[index];
+        const targetValue = targetValues[index];
 
         if (targetValue === undefined) {
           return value;
@@ -345,17 +447,19 @@ function IKController({
     });
   });
 
-  return (
-    !!target && (
-      <mesh position={target}>
-        <sphereGeometry args={[0.12, 32, 32]} />
+  if (!target) {
+    return null;
+  }
 
-        <meshStandardMaterial
-          color="#ff4fa3"
-          emissive="#ff4fa3"
-          emissiveIntensity={0.2}
-        />
-      </mesh>
-    )
+  return (
+    <mesh position={target}>
+      <sphereGeometry args={[0.12, 32, 32]} />
+
+      <meshStandardMaterial
+        color="#ff4fa3"
+        emissive="#ff4fa3"
+        emissiveIntensity={0.2}
+      />
+    </mesh>
   );
 }

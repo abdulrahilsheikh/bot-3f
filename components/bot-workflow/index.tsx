@@ -1,6 +1,7 @@
 "use client";
 
-import { useSegments } from "@/context/segment";
+import { useState } from "react";
+
 import {
   addEdge,
   Background,
@@ -11,20 +12,35 @@ import {
   Panel,
   ReactFlow,
 } from "@xyflow/react";
+
 import "@xyflow/react/dist/style.css";
+
+import { useSegments } from "@/context/segment";
 import SegmentNode from "../flow-node";
-import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useRouter } from "next/navigation";
 
 const nodeTypes: NodeTypes = {
   segmentNode: SegmentNode,
 };
 
 const BotWorkFlow = () => {
+  const router = useRouter();
   const [showImport, setShowImport] = useState(false);
-
   const [json, setJson] = useState("");
-
   const [error, setError] = useState("");
+
   const {
     nodes,
     edges,
@@ -35,6 +51,10 @@ const BotWorkFlow = () => {
     handleCopyJson,
     setNodes,
   } = useSegments();
+
+  /* ---------------------------------- */
+  /* Connect nodes */
+  /* ---------------------------------- */
 
   function onConnect(connection: Connection) {
     setEdges((current) =>
@@ -57,10 +77,15 @@ const BotWorkFlow = () => {
       ),
     );
   }
+
+  /* ---------------------------------- */
+  /* Add segment */
+  /* ---------------------------------- */
+
   function handleAddSegment() {
     addSegment({
       joint: {
-        name: "Joint " + (nodes.length + 1),
+        name: `Joint ${nodes.length + 1}`,
         type: "revolute",
         axis: [0, 0, 1],
         min: -Math.PI,
@@ -68,7 +93,7 @@ const BotWorkFlow = () => {
       },
 
       link: {
-        name: "Link " + (nodes.length + 1),
+        name: `Link ${nodes.length + 1}`,
 
         length: 1,
         width: 0.25,
@@ -84,6 +109,21 @@ const BotWorkFlow = () => {
       value: 0,
     });
   }
+
+  /* ---------------------------------- */
+  /* Open import */
+  /* ---------------------------------- */
+
+  function openImport() {
+    setError("");
+    setJson("");
+    setShowImport(true);
+  }
+
+  /* ---------------------------------- */
+  /* Import */
+  /* ---------------------------------- */
+
   function handleImport() {
     setError("");
 
@@ -102,18 +142,20 @@ const BotWorkFlow = () => {
         throw new Error("`edges` must be an array.");
       }
 
-      /*
-       * Basic node validation
-       */
+      /* ----------------------------- */
+      /* Validate nodes */
+      /* ----------------------------- */
+
       for (const node of parsed.nodes) {
         if (!node.id || !node.type || !node.position) {
           throw new Error("Every node must have id, type and position.");
         }
       }
 
-      /*
-       * Basic edge validation
-       */
+      /* ----------------------------- */
+      /* Validate edges */
+      /* ----------------------------- */
+
       for (const edge of parsed.edges) {
         if (!edge.source || !edge.target) {
           throw new Error("Every edge must have source and target.");
@@ -125,12 +167,54 @@ const BotWorkFlow = () => {
 
       setShowImport(false);
       setJson("");
+      setError("");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Invalid JSON.");
     }
   }
+
+  /* ---------------------------------- */
+  /* Close import */
+  /* ---------------------------------- */
+
+  function closeImport() {
+    setShowImport(false);
+    setJson("");
+    setError("");
+  }
+  function handleUseConfig() {
+    try {
+      const config = {
+        nodes,
+        edges,
+      };
+
+      const json = JSON.stringify(config);
+
+      // UTF-8 safe Base64
+      const base64 = btoa(
+        encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+          String.fromCharCode(parseInt(p1, 16)),
+        ),
+      );
+
+      // Make it URL safe
+      const encodedConfig = base64
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+
+      router.push(`/?config=${encodedConfig}`);
+
+      setShowImport(false);
+    } catch (error) {
+      console.error("Failed to encode robot configuration:", error);
+
+      setError("Failed to create configuration.");
+    }
+  }
   return (
-    <div style={{ height: "100%" }}>
+    <div className="h-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -142,86 +226,89 @@ const BotWorkFlow = () => {
         nodeTypes={nodeTypes}
       >
         <Background />
+
         <Controls />
-        <Panel position="top-left" className="!m-4 space-x-4">
-          <button
-            type="button"
-            onClick={handleAddSegment}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-lg ring-1 ring-gray-200 transition hover:bg-gray-50 active:scale-95"
-          >
+
+        {/* ================================= */}
+        {/* TOOLBAR */}
+        {/* ================================= */}
+
+        <Panel position="top-left" className="!m-4 flex gap-2">
+          <Button type="button" variant="secondary" onClick={handleAddSegment}>
             + Add Segment
-          </button>
-          <button
-            type="button"
-            onClick={handleCopyJson}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-lg ring-1 ring-gray-200 transition hover:bg-gray-50 active:scale-95"
-          >
+          </Button>
+
+          <Button type="button" variant="secondary" onClick={handleCopyJson}>
             Copy JSON
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError("");
-              setShowImport(true);
-            }}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-lg ring-1 ring-gray-200 transition hover:bg-gray-50 active:scale-95"
-          >
+          </Button>
+
+          <Button type="button" variant="secondary" onClick={openImport}>
             Import JSON
-          </button>
+          </Button>
+
+          <Button type="button" onClick={handleUseConfig}>
+            Use Config
+          </Button>
         </Panel>
-        {showImport && (
-          <Panel position="top-center" className="!m-0">
-            <div className="w-[500px] rounded-xl border bg-white p-4 shadow-2xl">
-              <div className="mb-3">
-                <h2 className="font-semibold text-gray-900">Import Flow</h2>
+      </ReactFlow>
 
-                <p className="text-xs text-gray-500">
-                  Paste React Flow JSON containing nodes and edges.
-                </p>
-              </div>
+      {/* ================================= */}
+      {/* IMPORT DIALOG */}
+      {/* ================================= */}
 
-              <textarea
-                value={json}
-                onChange={(e) => setJson(e.target.value)}
-                placeholder={`{
+      <Dialog
+        open={showImport}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeImport();
+          } else {
+            setShowImport(true);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Import Flow</DialogTitle>
+
+            <DialogDescription>
+              Paste React Flow JSON containing nodes and edges.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* JSON */}
+
+          <Textarea
+            value={json}
+            onChange={(e) => setJson(e.target.value)}
+            placeholder={`{
   "nodes": [],
   "edges": []
 }`}
-                spellCheck={false}
-                className="nodrag nowheel h-[300px] w-full resize-none rounded-lg border bg-gray-50 p-3 font-mono text-xs text-gray-900 outline-none focus:border-black"
-              />
+            spellCheck={false}
+            className="nodrag nowheel h-[300px] resize-none font-mono text-xs"
+          />
 
-              {error && (
-                <div className="mt-2 rounded-lg bg-red-50 p-2 text-xs text-red-600">
-                  {error}
-                </div>
-              )}
+          {/* ERROR */}
 
-              <div className="mt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowImport(false);
-                    setJson("");
-                    setError("");
-                  }}
-                  className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-                <button
-                  type="button"
-                  onClick={handleImport}
-                  className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:bg-gray-800"
-                >
-                  Import
-                </button>
-              </div>
-            </div>
-          </Panel>
-        )}
-      </ReactFlow>
+          {/* FOOTER */}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeImport}>
+              Cancel
+            </Button>
+
+            <Button type="button" onClick={handleImport}>
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -46,41 +46,7 @@ const SegmentContext = createContext<SegmentContextValue | null>(null);
 
 export function SegmentProvider({
   children,
-  initialNodes = [
-    {
-      id: "root",
-      type: "segmentNode",
-      position: {
-        x: 100,
-        y: 100,
-      },
-      data: {
-        segment: {
-          joint: {
-            name: "Joint 1",
-            type: "revolute",
-            axis: [0, 1, 0],
-            min: -Math.PI,
-            max: Math.PI,
-          },
-
-          link: {
-            name: "Link 1",
-            length: 1,
-            width: 0.25,
-            depth: 0.25,
-
-            childMount: {
-              x: 0,
-              y: 1,
-              z: 0,
-            },
-          },
-          value: 0,
-        },
-      },
-    },
-  ],
+  initialNodes = [],
   initialEdges = [],
 }: {
   children: ReactNode;
@@ -143,6 +109,11 @@ export function SegmentProvider({
   /* ------------------------------ */
 
   function deleteSegment(nodeId: string) {
+    // Never delete root
+    if (nodeId === "root") {
+      return;
+    }
+
     setNodes((current) => current.filter((node) => node.id !== nodeId));
 
     setEdges((current) =>
@@ -152,10 +123,23 @@ export function SegmentProvider({
     );
   }
 
-  function onNodesChange(changes: NodeChange<SegmentNodeType>[]) {
-    setNodes((current) => applyNodeChanges(changes, current));
-  }
+  /* ------------------------------ */
+  /* Node changes */
+  /* ------------------------------ */
 
+  function onNodesChange(changes: NodeChange<SegmentNodeType>[]) {
+    /*
+     * Remove delete changes for the root node.
+     *
+     * React Flow can generate a "remove" change
+     * independently of deleteSegment().
+     */
+    const filteredChanges = changes.filter(
+      (change) => change.type !== "remove" || change.id !== "root",
+    );
+
+    setNodes((current) => applyNodeChanges(filteredChanges, current));
+  }
   function onEdgesChange(changes: EdgeChange[]) {
     setEdges((current) => applyEdgeChanges(changes, current));
   }

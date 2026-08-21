@@ -132,7 +132,7 @@ export default function IkCalculator({ segments }: Props) {
   };
 
   return (
-    <div className="h-screen flex font-sans">
+    <div className="h-screen flex">
       {/* ========================= */}
       {/* CONTROLS */}
       {/* ========================= */}

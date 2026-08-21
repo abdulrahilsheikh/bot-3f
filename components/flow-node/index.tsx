@@ -6,6 +6,15 @@ import { useSegments } from "@/context/segment";
 import type { JointType } from "@/interfaces/joint";
 import type { SegmentFormData, SegmentNodeType } from "@/interfaces/segment";
 
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
   const { updateSegment } = useSegments();
 
@@ -45,9 +54,7 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
 
     axis[index] = value;
 
-    updateJoint({
-      axis,
-    });
+    updateJoint({ axis });
   }
 
   function updateChildMount(axis: "x" | "y" | "z", value: number) {
@@ -85,63 +92,66 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
     return value;
   }
 
+  /* ---------------------------------- */
+  /* Render */
+  /* ---------------------------------- */
+
   return (
     <div
-      className="w-[300px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+      className="w-[300px] overflow-hidden rounded-xl border bg-background shadow-lg"
       onWheel={(e) => e.stopPropagation()}
     >
-      {/* ================================= */}
       {/* TARGET */}
-      {/* ================================= */}
 
       <Handle
         type="target"
         position={Position.Top}
-        className="!h-3 !w-3 !bg-gray-500"
+        className="!h-3 !w-3 !bg-muted-foreground"
       />
 
-      {/* ================================= */}
       {/* HEADER */}
-      {/* ================================= */}
 
-      <div className="border-b bg-gray-50 px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <input
+      <div className="border-b bg-muted/40 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Input
             value={joint.name}
             onChange={(e) =>
               updateJoint({
                 name: e.target.value,
               })
             }
-            className="nodrag min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none"
+            className="nodrag h-8 flex-1 border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
           />
 
-          <select
+          <Select
             value={joint.type}
-            onChange={(e) =>
+            onValueChange={(value) =>
               updateJoint({
-                type: e.target.value as JointType,
+                type: value as JointType,
               })
             }
-            className="nodrag rounded-md bg-black px-2 py-1 text-xs text-white outline-none"
           >
-            <option value="revolute">Revolute</option>
+            <SelectTrigger className="nodrag h-8 w-[105px] bg-black text-xs text-white">
+              <SelectValue />
+            </SelectTrigger>
 
-            <option value="prismatic">Prismatic</option>
-          </select>
+            <SelectContent>
+              <SelectItem value="revolute">Revolute</SelectItem>
+
+              <SelectItem value="prismatic">Prismatic</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <p className="mt-1 text-xs capitalize text-gray-500">
+        <p className="mt-1 text-xs capitalize text-muted-foreground">
           {joint.type} joint
         </p>
       </div>
 
-      {/* ================================= */}
       {/* JOINT */}
-      {/* ================================= */}
 
       <div className="border-b px-4 py-3">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Joint
         </h4>
 
@@ -151,10 +161,12 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
           <NumberInput value={displayValue()} onChange={updateValue} />
         </Field>
 
-        {/* Axis */}
+        {/* AXIS */}
 
         <div className="mb-3">
-          <label className="mb-1 block text-xs text-gray-500">Axis</label>
+          <label className="mb-1 block text-xs text-muted-foreground">
+            Axis
+          </label>
 
           <div className="grid grid-cols-3 gap-2">
             <NumberInput
@@ -174,7 +186,7 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
           </div>
         </div>
 
-        {/* Limits */}
+        {/* LIMITS */}
 
         <div className="grid grid-cols-2 gap-2">
           <Field label={joint.type === "revolute" ? "Min (°)" : "Min (m)"}>
@@ -211,24 +223,22 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
         </div>
       </div>
 
-      {/* ================================= */}
       {/* LINK */}
-      {/* ================================= */}
 
       <div className="border-b px-4 py-3">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Link
         </h4>
 
         <Field label="Name">
-          <input
+          <Input
             value={link.name}
             onChange={(e) =>
               updateLink({
                 name: e.target.value,
               })
             }
-            className="nodrag w-full rounded-md border px-2 py-1.5 text-sm outline-none focus:border-black"
+            className="nodrag"
           />
         </Field>
 
@@ -268,12 +278,10 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
         </div>
       </div>
 
-      {/* ================================= */}
       {/* CHILD MOUNT */}
-      {/* ================================= */}
 
       <div className="px-4 py-3">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Next Joint Mount
         </h4>
 
@@ -301,18 +309,17 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
         </div>
       </div>
 
-      {/* ================================= */}
       {/* SOURCE */}
-      {/* ================================= */}
 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-3 !w-3 !bg-black"
+        className="!h-3 !w-3 !bg-foreground"
       />
     </div>
   );
 }
+
 /* ================================== */
 /* Field */
 /* ================================== */
@@ -326,7 +333,9 @@ function Field({
 }) {
   return (
     <label className="mb-3 block">
-      <span className="mb-1 block text-xs text-gray-500">{label}</span>
+      <span className="mb-1.5 block text-xs text-muted-foreground">
+        {label}
+      </span>
 
       {children}
     </label>
@@ -345,12 +354,12 @@ function NumberInput({
   onChange: (value: number) => void;
 }) {
   return (
-    <input
+    <Input
       type="number"
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
       onWheel={(e) => e.currentTarget.blur()}
-      className="nodrag w-full rounded-md border px-2 py-1.5 text-sm outline-none focus:border-black"
+      className="nodrag h-9"
     />
   );
 }

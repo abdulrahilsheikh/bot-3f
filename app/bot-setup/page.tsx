@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <ReactFlowProvider>
       <SegmentProvider>
-        <div className="h-screen grid grid-cols-2 font-sans ">
+        <div className="h-screen grid grid-cols-2">
           <BotWorkFlow />
           <ThreeJsCanvas>
             <BotComponent />

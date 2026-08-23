@@ -1,18 +1,18 @@
 "use client";
 import IkCalculator from "@/components/ik-calculator";
+import { ROOT_ID } from "@/constants/shared";
 import { SegmentFormData, SegmentNodeType } from "@/interfaces/segment";
 import { getConnectedSegments } from "@/utils/bot";
 import { decodeRobotConfig } from "@/utils/helper";
 import { Edge } from "@xyflow/react";
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
 export default function Home() {
   const searchParams = useSearchParams();
-
+  const encoded = searchParams.get("config");
+  const router = useRouter();
   const list = useMemo(() => {
-    const encoded = searchParams.get("config");
-
     if (!encoded) {
       return [] as SegmentFormData[];
     }
@@ -23,11 +23,16 @@ export default function Home() {
         edges: Edge[];
       }>(encoded);
 
-      return getConnectedSegments(items.nodes, items.edges, "root");
+      return getConnectedSegments(items.nodes, items.edges, ROOT_ID);
     } catch (error) {
       console.error("Invalid robot configuration:", error);
       return [] as SegmentFormData[];
     }
-  }, [searchParams]);
-  return <IkCalculator segments={list} />;
+  }, [encoded]);
+
+  useEffect(() => {
+    if (!encoded) router.replace(`/bot-setup`);
+  }, [encoded, router]);
+
+  return !!encoded && <IkCalculator segments={list} />;
 }

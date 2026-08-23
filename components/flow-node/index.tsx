@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ROOT_ID } from "@/constants/shared";
 
 export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
   const { updateSegment } = useSegments();
@@ -32,6 +33,19 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
   }
 
   function updateJoint(changes: Partial<SegmentFormData["joint"]>) {
+    const tempJoint: JointType = joint.type;
+
+    if (changes.type && changes.type !== tempJoint) {
+      if (changes.type === "revolute") {
+        changes.min = -Math.PI;
+        changes.max = Math.PI;
+        changes.axis = [0, 1, 0];
+      } else {
+        changes.min = -1;
+        changes.max = 1;
+        changes.axis = [0, 0, 1];
+      }
+    }
     update({
       joint: {
         ...joint,
@@ -103,11 +117,13 @@ export default function SegmentNode({ id, data }: NodeProps<SegmentNodeType>) {
     >
       {/* TARGET */}
 
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!h-3 !w-3 !bg-muted-foreground"
-      />
+      {id !== ROOT_ID && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!h-3 !w-3 !bg-muted-foreground"
+        />
+      )}
 
       {/* HEADER */}
 

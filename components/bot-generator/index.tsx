@@ -5,6 +5,7 @@ import { getConnectedSegments } from "@/utils/bot";
 import { useMemo } from "react";
 import * as THREE from "three";
 import { GizmoViewport, Line } from "@react-three/drei";
+import { ROOT_ID } from "@/constants/shared";
 
 interface RobotProps {
   segments: SegmentFormData[];
@@ -13,7 +14,7 @@ interface RobotProps {
 export default function BotComponent() {
   const { nodes, edges } = useSegments();
   const list = useMemo(() => {
-    return getConnectedSegments(nodes, edges, "root");
+    return getConnectedSegments(nodes, edges, ROOT_ID);
   }, [nodes, edges]);
 
   return <>{!!list.length && <BotMesh segments={list} />}</>;

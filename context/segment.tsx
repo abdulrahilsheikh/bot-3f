@@ -1,3 +1,4 @@
+import { ROOT_ID } from "@/constants/shared";
 import { SegmentFormData, SegmentNodeType } from "@/interfaces/segment";
 import {
   applyEdgeChanges,
@@ -65,7 +66,7 @@ export function SegmentProvider({
     data: SegmentFormData,
     position = {
       x: 100,
-      y: 100,
+      y: 0,
     },
   ) {
     const id = crypto.randomUUID();
@@ -110,7 +111,7 @@ export function SegmentProvider({
 
   function deleteSegment(nodeId: string) {
     // Never delete root
-    if (nodeId === "root") {
+    if (nodeId === ROOT_ID) {
       return;
     }
 
@@ -135,7 +136,7 @@ export function SegmentProvider({
      * independently of deleteSegment().
      */
     const filteredChanges = changes.filter(
-      (change) => change.type !== "remove" || change.id !== "root",
+      (change) => change.type !== "remove" || change.id !== ROOT_ID,
     );
 
     setNodes((current) => applyNodeChanges(filteredChanges, current));
